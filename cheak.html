@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hexa Puzzle</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+
+        .hex-grid {
+            display: flex;
+            flex-wrap: wrap;
+            width: 300px;
+            margin-top: 50px;
+        }
+
+        .hex {
+            width: 60px;
+            height: 60px;
+            background-color: #8fc1d4;
+            clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+            margin: 5px;
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: gold; /* Set text color to gold */
+            font-size: 20px;
+            font-weight: bold;
+            user-select: none; /* Prevent text selection */
+        }
+
+        .hex:hover {
+            background-color: #67a0b2;
+        }
+
+        .hex.active {
+            background-color: #ff6f61;
+        }
+
+        .status {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .coin-display {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .claim-exit {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #ff6f61;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        .claim-exit:hover {
+            background-color: #ff4b3a;
+        }
+    </style>
+</head>
+<body>
+             <div class="hex-grid" id="hexGrid">
+        <!-- Hexagons will be inserted dynamically -->
+    </div>
+    <div class="status" id="status">Click two identical numbers to combine!</div>
+    <div class="coin-display" id="coinDisplay">Total FXCoins: 0</div>
+    <button class="claim-exit" id="claimExitButton">Claim and Exit</button>
+
+    <script>
+        const hexGrid = document.getElementById('hexGrid');
+        const status = document.getElementById('status');
+        const coinDisplay = document.getElementById('coinDisplay');
+        const claimExitButton = document.getElementById('claimExitButton');
+        let activeHex = null; // Track the first clicked hexagon
+        let totalFxCoin = 0; // Total FXCoins earned by the player
+        let gridSize = 5; // Initial grid size
+
+        // Create hexagon elements
+        const createHexagon = (number) => {
+            const hex = document.createElement('div');
+            hex.classList.add('hex');
+            hex.textContent = number;
+            hex.dataset.number = number; // Store the number in dataset
+            hex.style.color = getColorByNumber(number); // Set color based on number
+            hex.addEventListener('click', () => handleHexClick(hex));
+            return hex;
+        };
+
+        // Get color based on the number
+        const getColorByNumber = (number) => {
+            if (number >= 1 && number <= 5) return 'blue';
+            if (number >= 6 && number <= 15) return 'red';
+            if (number >= 16 && number <= 25) return 'green';
+            if (number >= 26 && number <= 75) return 'purple';
+            return 'gold'; // For numbers 75 and above
+        };
+
+        // Shuffle an array
+        const shuffleArray = (array) => array.sort(() => Math.random() - 0.5);
+
+        // Initialize the puzzle
+        const initPuzzle = () => {
+            hexGrid.innerHTML = ''; // Clear the grid for the new puzzle
+            
+            // Create an array of pairs of numbers (only 1)
+            const numbers = [];
+            for (let i = 1; i <= gridSize; i++) {
+                numbers.push(1, 1); // Add two of each number
+            }
+            
+            shuffleArray(numbers).forEach(number => {
+                const hex = createHexagon(number);
+                hexGrid.appendChild(hex);
+            });
+
+            // Adjust the grid size dynamically based on the level
+            hexGrid.style.width = `${gridSize * 60}px`;
+        };
+
+        // Generate a new number (only 1)
+        const generateNewNumber = () => {
+            const newHex = createHexagon(1); // Create a new hexagon with the number 1
+            hexGrid.appendChild(newHex); // Add the new hexagon to the grid
+        };
+
+        // Handle hexagon click
+        const handleHexClick = (hex) => {
+            if (hex.classList.contains('active')) return; // Ignore if already active
+
+            hex.classList.add('active'); // Mark hexagon as active
+
+            if (activeHex === null) {
+                // If no hexagon is active, store this one
+                activeHex = hex;
+            } else {
+                // Check for match
+                if (activeHex.dataset.number === hex.dataset.number) {
+                    const newNumber = parseInt(activeHex.dataset.number) * 2; // Double the number
+                    const newHex = createHexagon(newNumber); // Create a new hexagon with the new number
+
+                    // Replace the two merged hexagons with the new hexagon
+                    hexGrid.appendChild(newHex); // Add the new hexagon to the grid
+                    activeHex.remove(); // Remove the first active hexagon
+                    hex.remove(); // Remove the second active hexagon
+
+                    // Calculate FXCoin based on sum of two merged numbers * 10
+                    const fxCoinReward = (parseInt(activeHex.dataset.number) + parseInt(hex.dataset.number)) * 10;
+                    totalFxCoin += fxCoinReward; // Update total FXCoin
+                    updateCoinDisplay(); // Update the display
+                    status.textContent = `Combined to form ${newNumber}! FXCoin reward: ${fxCoinReward}`;
+
+                    // Generate a new random number hexagon
+                    generateNewNumber();
+
+                } else {
+                    // If numbers don't match, revert hexagons back to normal after a delay
+                    status.textContent = 'Numbers do not match, reverting...';
+                    setTimeout(() => {
+                        activeHex.classList.remove('active');
+                        hex.classList.remove('active');
+                        status.textContent = 'Click two identical numbers to combine!'; // Reset status text
+                    }, 1000);
+                }
+                activeHex = null; // Reset active hexagon
+            }
+        };
+
+        // Update the FXCoin display
+        const updateCoinDisplay = () => {
+            coinDisplay.textContent = `Total FXCoins: ${totalFxCoin}`;
+        };
+
+        // Claim and Exit functionality
+        const claimAndExit = () => {
+            alert(`You have claimed a total of ${totalFxCoin} FXCoins!`);
+            totalFxCoin = 0; // Reset total FXCoins
+            updateCoinDisplay(); // Update display to reflect the reset
+            // You can implement more logic to exit or restart the game here
+            window.location.reload(); // For example, reload the page to start over
+        };
+
+        // Attach event listener to claim and exit button
+        claimExitButton.addEventListener('click', claimAndExit);
+
+        // Initialize the game
+        initPuzzle();
+
+        // Generate initial numbers
+        for (let i = 0; i < 3; i++) { // Add 3 initial random numbers (only 1)
+            generateNewNumber();
+        }
+    </script>
+</body>
+</html>
